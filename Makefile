@@ -1,3 +1,5 @@
+VERSION=v0.1.0
+DATE=$(shell date +'%y%m%d_%H%M%S')
 
 SDS=0
 HW=0
@@ -61,6 +63,9 @@ $(OBJDIR)%.o: %.c $(DEPS)
 
 obj:
 	mkdir -p obj
+
+tar:
+	tar cvf GEMM_$(VERSION)_$(DATE).tar.gz ../GEMM
 
 .PHONY: clean
 
