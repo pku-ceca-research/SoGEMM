@@ -1,0 +1,10 @@
+*.swp
+
+# Objects
+obj/
+
+# SDSoC utilities
+sd_card/
+_sds/
+*.elf
+*.bit
