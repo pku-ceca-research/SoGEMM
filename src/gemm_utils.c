@@ -8,6 +8,10 @@
 
 #include "gemm_utils.h"
 
+int get_blocked_width(int orig, int blk_width) {
+  return (int) ceil((double)orig/blk_width)*blk_width;
+}
+
 // copied
 void print_matrix(D_TYPE *A, int M, int N) {
     int i, j;

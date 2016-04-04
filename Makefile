@@ -43,7 +43,7 @@ EXEC=gemm.elf
 ELF=.elf
 endif
 
-OBJ=gemm.o gemm_grid.o gemm_utils.o
+OBJ=gemm.o gemm_grid.o gemm_utils.o gemm_trans.o
 
 OBJS=$(addprefix $(OBJDIR), $(OBJ))
 DEPS=$(wildcard src/*.h) $(wildcard src/*.c) Makefile

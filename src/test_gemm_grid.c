@@ -9,6 +9,7 @@
 #include "gemm_utils.h"
 #include "gemm.h"
 #include "gemm_grid.h"
+#include "gemm_trans.h"
 
 #define NUM_MAX_TESTS 100
 
@@ -68,7 +69,7 @@ void test_valid_blocking_all(int M, int N) {
 	for (blk_m = 1; blk_m <= M; blk_m ++) {
 		for (blk_n = 1; blk_n <= N; blk_n ++) {
 			// printf("Blocked A(%3d, %3d) =\t", blk_m, blk_n);
-			float *A_block = trans_to_blocked(A,M,N,N,blk_m,blk_n);
+			float *A_block = trans_to_blocked(0,A,M,N,N,blk_m,blk_n);
 
 			is_valid &= test_valid_blocking(A, A_block, M, N, blk_m, blk_n);
 
@@ -104,7 +105,7 @@ void test_trans_to_blocked_bandwidth(int M, int N) {
 		double sec = 0.0;
 		for (j = 0; j < iter; j++) {
 			clock_t start = clock();
-			A_block = trans_to_blocked(A,M,N,N,blk_width,blk_width);
+			A_block = trans_to_blocked(0,A,M,N,N,blk_width,blk_width);
 			clock_t end = clock();
 			sec += (double)(end-start)/CLOCKS_PER_SEC;
 		}
@@ -116,30 +117,7 @@ void test_trans_to_blocked_bandwidth(int M, int N) {
 }
 
 void test_trans_and_trans_back(int M, int N) {
-	int lda = N; // fixed
 
-	int blk_m, blk_n;
-	int is_valid = 1;
-	for (blk_m = 1; blk_m <= M; blk_m +=128) {
-		for (blk_n = 1; blk_n <= N; blk_n +=128) {
-			float *A = random_matrix(M, N);
-			float *A_block = trans_to_blocked(A, M, N, lda, blk_m, blk_n);
-			float *A_back = (float *) malloc(sizeof(float)*M*N);
-
-			trans_from_blocked(A_back,A_block,M,N,lda,blk_m,blk_n);
-
-			is_valid &= is_matrix_equal(A_back, A, M, N, lda);
-
-			free(A);
-			free(A_block);
-			free(A_back);
-		}
-	}
-
-	if (is_valid)
-		printf("PASSED\n");
-	else 
-		printf("FAILED\n");
 }
 
 void test_normal_mmult(int M, int N, int K, int iter) {
@@ -227,7 +205,22 @@ int main(int argc, char *argv[]) {
 		printf("=== TEST[%d] name=%s\n", i, test_name);
 
 		if (strcmp(test_name, "TRANS") == 0) {
-			test_trans_and_trans_back(M, N);
+			// test_trans_and_trans_back(M, N);
+			float *A = random_matrix(M, N);
+			float *A_T = random_matrix(N, M);
+			int blk_m = 2;
+			int blk_n = 3;
+
+			blocked_matrix *A_BLK = flatten_matrix_to_blocked(0,A,M,N,N,blk_m,blk_n);
+			printf("A =>\n");
+			print_matrix(A,M,N);
+			print_blocked_matrix(A_BLK->mat,M,N,blk_m,blk_n);
+
+			blocked_matrix *A_T_BLK = flatten_matrix_to_blocked(1,A_T,M,N,M,blk_m,blk_n);
+			printf("A_T =>\n");
+			print_matrix(A_T,N,M);
+			print_blocked_matrix(A_T_BLK->mat,M,N,blk_m,blk_n);
+
 		} else if (strcmp(test_name, "NORMAL_MMULT") == 0) {
 			test_normal_mmult(M, N, K, 1);
 		} else if (strcmp(test_name, "NORMAL_MMULT_PROF") == 0) {

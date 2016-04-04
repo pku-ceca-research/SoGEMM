@@ -6,94 +6,7 @@
 
 #include "gemm_utils.h"
 #include "gemm_grid.h"
-
-// it seems that sds_alloc will fail in this case...
-// #ifdef SDS
-// #include "sds_lib.h"
-// #define MALLOC(x) sds_alloc((x))
-// #define FREE(x) sds_free((x))
-// #else
-#define MALLOC malloc
-#define FREE free
-// #endif
-
-int get_blocked_width(int orig, int blk_width) {
-	return (int) ceil((double)orig/blk_width)*blk_width;
-}
-
-/* This is a very basic version of transformation:
- * lda
- */
-float *trans_to_blocked(float *A, int m, int n, int lda, int blk_m, int blk_n) {
-	// sanity checks
-	if (!A) {
-		fprintf(stderr, "A should not be NULL\n");
-		exit(1);
-	}
-	if (lda < n) {
-		fprintf(stderr, "LDA(%d) should be larger than N(%d)\n", lda, n);
-		exit(1);
-	}
-
-	// m_align and n_align decides the matrix size
-	int m_align = get_blocked_width(m, blk_m);
-	int n_align = get_blocked_width(n, blk_n);
-
-	int blk_size = blk_m*blk_n;
-	int blk_per_m = m_align/blk_m;
-	int blk_per_n = n_align/blk_n;
-
-	float *A_block = (float *) MALLOC(sizeof(float)*m_align*n_align);
-	if (!A_block) {
-		fprintf(stderr, "Can't allocate memory for (%d, %d)\n", m_align, n_align);
-		exit(1);
-	}
-
-	int i, j, x, y;
-	for (i = 0; i < m_align; i += blk_m) {
-		for (j = 0; j < n_align; j += blk_n) {
-			int blk_i = i/blk_m;
-			int blk_j = j/blk_n;
-			int blk_id = blk_i*blk_per_n+blk_j;
-			// inside block
-			for (x = 0; x < blk_m && x + i < m; x ++) {
-				for (y = 0; y < blk_n && y + j < n; y ++) {
-					int dst_idx = blk_id*blk_size+x*blk_n+y;
-					int src_idx = (i+x)*n+j+y;
-					A_block[dst_idx] = A[src_idx];
-				}
-			}
-		}
-	}
-
-	return A_block;
-}
-
-void trans_from_blocked(float *A, float *A_block, int M, int N, int lda, int blk_m, int blk_n) {
-	int i, j;
-
-	int M_align = get_blocked_width(M, blk_m);
-	int N_align = get_blocked_width(N, blk_n);
-	
-	int blk_size = blk_m*blk_n;
-	int num_blk = M_align*N_align/blk_size;
-	int num_blk_m = M_align/blk_m;
-	int num_blk_n = N_align/blk_n;
-
-	for (i = 0; i < M_align*N_align; i += blk_size) {
-		int blk_id = i/blk_size;
-		int blk_id_m = blk_id/num_blk_n;
-		int blk_id_n = blk_id%num_blk_n;
-
-		for (j = 0; j < blk_size; j++) {
-			int x = blk_id_m*blk_m+j/blk_n;
-			int y = blk_id_n*blk_n+j%blk_n;
-			if (x < M && y < N)
-				A[x*lda+y] = A_block[i+j];
-		}
-	}
-}
-
+#include "gemm_trans.h"
 
 /* INTERFACE */
 
@@ -249,7 +162,6 @@ void gemm_grid_nn(int M, int N, int K, float ALPHA,
 	float *C, int ldc)
 {
 	int blk_i, blk_j, blk_k;
-	int i;
 	
 	int num_blk_m = M/BLK_M;
 	int num_blk_n = N/BLK_N;
@@ -287,6 +199,49 @@ void gemm_grid_nn(int M, int N, int K, float ALPHA,
 	FREE(R_BLK);
 }
 
+void gemm_grid_tn(int M, int N, int K, float ALPHA,
+	float *A, int lda,
+	float *B, int ldb,
+	float *C, int ldc)
+{
+	int blk_i, blk_j, blk_k;
+	int num_blk_m = M/BLK_M;
+	int num_blk_n = N/BLK_N;
+	int num_blk_k = K/BLK_K;
+	int blk_size_A = BLK_M*BLK_K;
+	int blk_size_B = BLK_N*BLK_K;
+	int blk_size_C = BLK_M*BLK_N;
+
+	float* T_BLK = (float *) MALLOC(sizeof(float)*blk_size_C); // for C
+	float* R_BLK = (float *) MALLOC(sizeof(float)*blk_size_C); // for C
+	
+	for (blk_i = 0; blk_i < num_blk_m; blk_i++) {
+		for (blk_j = 0; blk_j < num_blk_n; blk_j++) {
+			int blk_id_C = blk_i*num_blk_n+blk_j;
+
+			float *C_BLK = C+blk_id_C*blk_size_C;
+			for (blk_k = 0; blk_k < num_blk_k; blk_k++) {
+				// transposed block id
+				int blk_id_A = blk_k*num_blk_m+blk_i;
+				int blk_id_B = blk_k*num_blk_n+blk_j;
+				
+				float *A_BLK = A+blk_id_A*blk_size_A;
+				float *B_BLK = B+blk_id_B*blk_size_B;
+
+				// call matrix ops
+				gemm_mmult(ALPHA,A_BLK,B_BLK,T_BLK);
+				gemm_madd(T_BLK,C_BLK,R_BLK);
+
+				memcpy(C_BLK,R_BLK,sizeof(float)*blk_size_C);
+			}
+		}
+	}
+
+	FREE(T_BLK);
+	FREE(R_BLK);
+
+}
+
 void gemm_grid(int TA, int TB, int M, int N, int K, float ALPHA,
 	float *A, int lda,
 	float *B, int ldb,
@@ -295,16 +250,16 @@ void gemm_grid(int TA, int TB, int M, int N, int K, float ALPHA,
 {
 	// printf("gemm_grid TA=%d TB=%d M=%d N=%d K=%d ALPHA=%f BETA=%f\n", 
 	// 	TA, TB, M, N, K, ALPHA, BETA);
-	float *A_block = trans_to_blocked(A,M,K,lda,BLK_M,BLK_K);
-	float *B_block = trans_to_blocked(B,K,N,ldb,BLK_K,BLK_N);
-	float *C_block = trans_to_blocked(C,M,N,ldc,BLK_M,BLK_N);
+	float *A_block = trans_to_blocked(TA,A,M,K,lda,BLK_M,BLK_K);
+	float *B_block = trans_to_blocked(TB,B,K,N,ldb,BLK_K,BLK_N);
+	float *C_block = trans_to_blocked(0,C,M,N,ldc,BLK_M,BLK_N);
 
 	// print_blocked_matrix(A_block,M,K,BLK_M,BLK_K);
 	// print_blocked_matrix(B_block,K,N,BLK_K,BLK_N);
 
-	int M_align = get_blocked_width(M, BLK_M);
-	int N_align = get_blocked_width(N, BLK_N);
-	int K_align = get_blocked_width(K, BLK_K);
+	int M_align = get_blocked_width(M,BLK_M);
+	int N_align = get_blocked_width(N,BLK_N);
+	int K_align = get_blocked_width(K,BLK_K);
 	// printf("Aligned M=%d N=%d K=%d\n", M_align, N_align, K_align);
 
 	int i;
@@ -313,11 +268,13 @@ void gemm_grid(int TA, int TB, int M, int N, int K, float ALPHA,
 
 	if (!TA && !TB)
 		gemm_grid_nn(M_align,N_align,K_align,ALPHA,A_block,lda,B_block,ldb,C_block,ldc);
+	else if (TA && !TB)
+		gemm_grid_tn(M_align,N_align,K_align,ALPHA,A_block,lda,B_block,lda,C_block,ldc);
 	else 
 		; // TODO
 
 	// print_blocked_matrix(C_block,M,N,BLK_M,BLK_N);
-	trans_from_blocked(C,C_block,M,N,ldc,BLK_M,BLK_N);
+	trans_from_blocked(0,C,C_block,M,N,ldc,BLK_M,BLK_N);
 
 	FREE(A_block);
 	FREE(B_block);
