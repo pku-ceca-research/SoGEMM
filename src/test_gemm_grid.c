@@ -6,12 +6,16 @@
 #include <getopt.h>
 #include <time.h>
 
+#include "gemm_types.h"
 #include "gemm_utils.h"
 #include "gemm.h"
 #include "gemm_grid.h"
 #include "gemm_trans.h"
 
+#include "test_gemm_trans.h"
+
 #define NUM_MAX_TESTS 100
+#define MAX_TEST_TITLE_LENGTH 1000
 
 int test_valid_blocking(float *A, float *A_block, int M, int N, int blk_m, int blk_n) {
 	int is_valid = 1;
@@ -116,10 +120,6 @@ void test_trans_to_blocked_bandwidth(int M, int N) {
 	}
 }
 
-void test_trans_and_trans_back(int M, int N) {
-
-}
-
 void test_normal_mmult(int M, int N, int K, int iter) {
 	float *A = random_matrix(M, K);
 	float *B = random_matrix(K, N);
@@ -171,18 +171,20 @@ int main(int argc, char *argv[]) {
 	int c;
 	int M=16, N=16, K=16;
 	int iter=10;
+	int verbose=0;
 	char *test_list[NUM_MAX_TESTS];
 	const char *tokens;
 
 	int i;
 	int num_test = 0;
 
-	while ((c = getopt(argc, argv, "m:n:k:t:i:")) != -1) {
+	while ((c = getopt(argc, argv, "m:n:k:t:i:v")) != -1) {
 		switch (c) {
 			case 'm': M = atoi(optarg); break;
 			case 'n': N = atoi(optarg); break;
 			case 'k': K = atoi(optarg); break;
 			case 'i': iter = atoi(optarg); break;
+			case 'v': verbose = 1; break;
 			case 't':
 				/* List of test names, seperated by comma */
 				tokens = ",";
@@ -202,25 +204,14 @@ int main(int argc, char *argv[]) {
 
 	for (i = 0; i < num_test; i++) {
 		char *test_name = test_list[i];
-		printf("=== TEST[%d] name=%s\n", i, test_name);
+		char test_title[MAX_TEST_TITLE_LENGTH];
+		sprintf(test_title, "=== TEST[%d] name=%s", i, test_name); 
+		PRINT_TITLE(test_title);
 
 		if (strcmp(test_name, "TRANS") == 0) {
 			// test_trans_and_trans_back(M, N);
-			float *A = random_matrix(M, N);
-			float *A_T = random_matrix(N, M);
-			int blk_m = 2;
-			int blk_n = 3;
-
-			blocked_matrix *A_BLK = flatten_matrix_to_blocked(0,A,M,N,N,blk_m,blk_n);
-			printf("A =>\n");
-			print_matrix(A,M,N);
-			print_blocked_matrix(A_BLK->mat,M,N,blk_m,blk_n);
-
-			blocked_matrix *A_T_BLK = flatten_matrix_to_blocked(1,A_T,M,N,M,blk_m,blk_n);
-			printf("A_T =>\n");
-			print_matrix(A_T,N,M);
-			print_blocked_matrix(A_T_BLK->mat,M,N,blk_m,blk_n);
-
+			test_flatten_matrix_to_blocked(M, N, verbose);
+			test_blocked_matrix_to_flatten(M, N, verbose);
 		} else if (strcmp(test_name, "NORMAL_MMULT") == 0) {
 			test_normal_mmult(M, N, K, 1);
 		} else if (strcmp(test_name, "NORMAL_MMULT_PROF") == 0) {

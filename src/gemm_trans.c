@@ -11,30 +11,37 @@
 /**
  * New transform functions:
  * - flatten_matrix_to_blocked
- * - blocked_matrix_to_flatten
+ * - BlockedMatrix_to_flatten
  */
-blocked_matrix* flatten_matrix_to_blocked(int T, float *A, 
+BlockedMatrix* flatten_matrix_to_blocked(int T, float *A, 
       int M, int N, int lda, int blk_m, int blk_n) {
   
   int M_align = get_blocked_width(M,blk_m);
   int N_align = get_blocked_width(N,blk_n);
 
-  // generate a blocked_matrix struct by given input parameters
-  blocked_matrix* blk_mat = (blocked_matrix *) malloc(sizeof(blocked_matrix));
+  // generate a BlockedMatrix struct by given input parameters
+  BlockedMatrix* blk_mat = (BlockedMatrix *) malloc(sizeof(BlockedMatrix));
   blk_mat->T   = T;
   // size params should be taken carefully
   blk_mat->H   = M_align;
   blk_mat->W   = N_align;
   blk_mat->bH  = blk_m;
   blk_mat->bW  = blk_n;
+  blk_mat->oH  = (T == 0) ? M : N;
+  blk_mat->oW  = (T == 0) ? N : M;
   blk_mat->ld  = lda;
   blk_mat->mat = (float *) MALLOC(sizeof(float)*blk_mat->H*blk_mat->W);
+  
+  if (!blk_mat->mat) {
+    fprintf(stderr, "Can't allocate memory for blocked matrix\n");
+    exit(1);
+  }
 
   // useful info
   int blk_id;
   int blk_size = blk_m * blk_n;
-  int num_blk_M = M / blk_m;
-  int num_blk_N = N / blk_n;
+  int num_blk_M = M_align / blk_m;
+  int num_blk_N = N_align / blk_n;
   
   // This is basically a linear algebra trick
   // First, we create a outer map from origin block(src_blk) to transposed block(dst_blk)
@@ -51,11 +58,12 @@ blocked_matrix* flatten_matrix_to_blocked(int T, float *A,
       blk_j = (T == 0) ? blk_idx % blk_n : blk_idx / blk_n;
       src_i = src_base_i + blk_i;
       src_j = src_base_j + blk_j;
-      
+
       float src = 
         ((T == 0 && src_i < M && src_j < N) ||
          (T == 1 && src_i < N && src_j < M)) 
         ? A[src_i*lda+src_j] : 0.0;
+      // printf("i %d j %d src %lf\n", src_i, src_j, src);
       blk_mat->mat[blk_id*blk_size+blk_idx] = src;
     }
   }
@@ -63,6 +71,34 @@ blocked_matrix* flatten_matrix_to_blocked(int T, float *A,
   return blk_mat;
 }
 
+void blocked_matrix_to_flatten(BlockedMatrix* blk_mat, float *A) {
+  int blk_id;
+  int blk_size  = blk_mat->bH * blk_mat->bW;
+  int num_blk_W = blk_mat->W / blk_mat->bW;
+  int blk_n = blk_mat->bW;
+  int blk_m = blk_mat->bH;
+
+  int i, j;
+  int T = blk_mat->T;
+  /* original shape */
+  int M = (T) ? blk_mat->oW : blk_mat->oH;
+  int N = (T) ? blk_mat->oH : blk_mat->oW;
+  int lda = blk_mat->ld;
+  for (i = 0; i < blk_mat->W*blk_mat->H; i += blk_size) {
+    blk_id = i / blk_size;
+    int blk_id_m = blk_id/num_blk_W;
+    int blk_id_n = blk_id%num_blk_W;
+
+    for (j = 0; j < blk_size; j++) {
+      int x = (T) ? blk_id_n*blk_n+j%blk_n : blk_id_m*blk_m+j/blk_n;
+      int y = (T) ? blk_id_m*blk_m+j/blk_n : blk_id_n*blk_n+j%blk_n;
+      if (( T && x < N && y < M) ||
+          (!T && x < M && y < N)) {
+        A[x*lda+y] = blk_mat->mat[i+j];          
+      }
+    }
+  }
+}
 
 
 /* This is a very basic version of transformation:
@@ -84,7 +120,6 @@ float *trans_to_blocked(int T, float *A, int m, int n, int lda, int blk_m, int b
   int n_align = get_blocked_width(n, blk_n);
 
   int blk_size = blk_m*blk_n;
-  int blk_per_m = m_align/blk_m;
   int blk_per_n = n_align/blk_n;
 
   float *A_block = (float *) MALLOC(sizeof(float)*m_align*n_align);
@@ -121,8 +156,6 @@ void trans_from_blocked(int T, float *A, float *A_block, int M, int N, int lda, 
   int N_align = get_blocked_width(N, blk_n);
   
   int blk_size = blk_m*blk_n;
-  int num_blk = M_align*N_align/blk_size;
-  int num_blk_m = M_align/blk_m;
   int num_blk_n = N_align/blk_n;
 
   for (i = 0; i < M_align*N_align; i += blk_size) {
@@ -131,13 +164,11 @@ void trans_from_blocked(int T, float *A, float *A_block, int M, int N, int lda, 
     int blk_id_n = blk_id%num_blk_n;
 
     for (j = 0; j < blk_size; j++) {
-      int x = blk_id_m*blk_m+j/blk_n;
-      int y = blk_id_n*blk_n+j%blk_n;
-      if (x < M && y < N) {
-        if (T)
-          A[y*lda+x] = A_block[i+j];
-        else
-          A[x*lda+y] = A_block[i+j];          
+      int x = (T) ? blk_id_n*blk_n+j%blk_n : blk_id_m*blk_m+j/blk_n;
+      int y = (!T) ? blk_id_n*blk_n+j%blk_n : blk_id_m*blk_m+j/blk_n ;
+      if ((T  && x < N && y < M) ||
+          (!T && x < M && y < N)) {
+        A[x*lda+y] = A_block[i+j];          
       }
     }
   }
