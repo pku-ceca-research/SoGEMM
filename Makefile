@@ -21,6 +21,7 @@ INCLUDE=./include/
 EXEC=gemm
 TEST_GEMM_SDS=test_gemm_sds
 TEST_GEMM_TRANS=test_gemm_trans
+TEST_GEMM_PLAIN=test_gemm_plain
 TEST_GEMM_BLOCK=test_gemm_block_main
 TEST_GEMM_BLOCK_UNIT=test_gemm_block_unit
 ELF=
@@ -64,8 +65,6 @@ ifeq ($(REBUILD), 1)
 SDSFLAGS+=-rebuild-hardware
 endif
 
-# SDSFLAGS+=gemm_sds gemm_onsds gemm_nn_sds gemm_nt_sds gemm_tn_sds gemm_tt_sds 
-# SDSFLAGS+=-sds-end 
 endif
 
 CC=sdscc $(SDSFLAGS)
@@ -73,18 +72,21 @@ EXEC=gemm.elf
 ELF=.elf
 endif
 
-OBJ=gemm_cpu.o gemm_utils.o gemm_trans.o gemm_block.o gemm_block_unit.o gemm_sds.o
+OBJ=gemm_cpu.o gemm_utils.o gemm_trans.o\
+		gemm_block.o gemm_plain.o\
+		gemm_block_unit.o gemm_sds.o
 OBJS=$(addprefix $(OBJDIR), $(OBJ))
 DEPS=$(wildcard $(INCLUDE)/*.h) $(wildcard $(SRCDIR)/*.c) Makefile
 
 all: obj test 
 
-test: obj test_unit test_block test_sds test_trans
+test: obj test_unit test_block test_sds test_trans test_plain
 
 test_trans: obj $(TEST_GEMM_TRANS)$(ELF)
-test_sds: obj $(TEST_GEMM_SDS)$(ELF)
-test_unit: obj $(TEST_GEMM_BLOCK_UNIT)$(ELF)
+test_sds: 	obj $(TEST_GEMM_SDS)$(ELF)
+test_unit: 	obj $(TEST_GEMM_BLOCK_UNIT)$(ELF)
 test_block: obj $(TEST_GEMM_BLOCK)$(ELF)
+test_plain: obj $(TEST_GEMM_PLAIN)$(ELF)
 
 $(EXEC): $(OBJS)
 	$(CC) $(CFLAGS) $^ src/main.c -o $@ $(LFLAGS)
@@ -93,6 +95,9 @@ $(TEST_GEMM_TRANS)$(ELF): $(OBJS) $(OBJDIR)$(TEST_GEMM_TRANS).o
 	$(CC) $(CFLAGS) $^ -o $@ $(LFLAGS)
 
 $(TEST_GEMM_BLOCK)$(ELF): $(OBJS) $(OBJDIR)$(TEST_GEMM_BLOCK).o
+	$(CC) $(CFLAGS) $^ -o $@ $(LFLAGS)
+
+$(TEST_GEMM_PLAIN)$(ELF): $(OBJS) $(OBJDIR)$(TEST_GEMM_PLAIN).o
 	$(CC) $(CFLAGS) $^ -o $@ $(LFLAGS)
 
 $(TEST_GEMM_BLOCK_UNIT)$(ELF): $(OBJS) $(OBJDIR)$(TEST_GEMM_BLOCK_UNIT).o

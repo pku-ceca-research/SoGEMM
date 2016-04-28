@@ -5,8 +5,8 @@
 #define BLK_N     32
 #define BLK_K     32
 
-#define NUM_PIPES 4
-#define NUM_DEPTH 2
+#define NUM_PIPES 1
+#define NUM_DEPTH 1
 
 #define BLK_SIZE_MN (BLK_M*BLK_N)
 #define BLK_SIZE_KN (BLK_N*BLK_K)

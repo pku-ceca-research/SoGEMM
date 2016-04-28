@@ -119,7 +119,7 @@ int test_gemm_block_main(int M, int N, int K, int verbose, int iter) {
   // Calculate final result
   start = clock();
   for (I = 0; I < iter; I ++) {
-    gemm_block_main(ALPHA, BETA, A_blk, B_blk, C_blk);
+    gemm_block_kernel(ALPHA, BETA, A_blk, B_blk, C_blk);
   }
   end = clock();
   printf("FINISHED hardware: %lfs\n", (double)(end-start)/CLOCKS_PER_SEC/iter);

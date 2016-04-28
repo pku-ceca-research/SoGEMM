@@ -3,6 +3,8 @@
 
 #include "gemm_types.h"
 #include "gemm_utils.h"
+#include "gemm_trans.h"
+#include "gemm_block.h"
 #include "gemm_block_unit.h"
 
 inline void gemm_block_calc_A(
@@ -21,7 +23,22 @@ inline void gemm_block_calc_B(
     float *A_buf, float *B_buf, float *T_buf, 
     float *C_buf, float *R_buf);
 
-void gemm_block_main(float ALPHA, float BETA, BlockedMatrix *A_blk, BlockedMatrix *B_blk, BlockedMatrix *C_blk)
+void gemm_block(int TA, int TB, int M, int N, int K, float ALPHA,
+    float *A, int lda,
+    float *B, int ldb,
+    float BETA, 
+    float *C, int ldc) 
+{
+  BlockedMatrix *A_blk = flatten_matrix_to_blocked(TA, A, M, K, lda, BLK_M, BLK_K);
+  BlockedMatrix *B_blk = flatten_matrix_to_blocked(TB, B, K, N, ldb, BLK_K, BLK_N);
+  BlockedMatrix *C_blk = flatten_matrix_to_blocked(0,  C, M, N, ldc, BLK_M, BLK_N);
+
+  gemm_block_kernel(ALPHA,BETA,A_blk,B_blk,C_blk);
+
+  blocked_matrix_to_flatten(C_blk, C);
+}
+
+void gemm_block_kernel(float ALPHA, float BETA, BlockedMatrix *A_blk, BlockedMatrix *B_blk, BlockedMatrix *C_blk)
 {
 #if BUFTYPE == 0
   static float A_buf[NUM_DEPTH*PIPE_SIZE_MK];
