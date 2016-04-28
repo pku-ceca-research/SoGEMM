@@ -5,9 +5,9 @@
 #include <math.h>
 #include <getopt.h>
 
-#include "gemm.h"
 #include "gemm_consts.h"
 #include "gemm_utils.h"
+#include "gemm_cpu.h"
 #include "gemm_sds.h"
 
 int main(int argc, char *argv[]) {
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
 
   start = clock();
   for (i = 0; i < iter; i++)
-    gemm(TA,TB,M,N,K,ALPHA,A,lda,B,ldb,BETA,G,ldc);
+    gemm_cpu(TA,TB,M,N,K,ALPHA,A,lda,B,ldb,BETA,G,ldc);
   end = clock();
   printf("FINISHED software: %lfs\n", (double)(end-start)/CLOCKS_PER_SEC/iter);
 

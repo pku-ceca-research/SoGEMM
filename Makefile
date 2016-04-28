@@ -1,5 +1,6 @@
 VERSION=v0.1.0
 DATE=$(shell date +'%y%m%d_%H%M%S')
+NAME=
 
 SDS=0
 HW=0
@@ -14,7 +15,9 @@ CFLAGS=-Ofast -Wall -Werror -Wno-unknown-pragmas
 LFLAGS=-lm
 
 VPATH=./src/
+SRCDIR=./src/
 OBJDIR=./obj$(ELF)/
+INCLUDE=./include/
 EXEC=gemm
 TEST_GEMM_SDS=test_gemm_sds
 TEST_GEMM_TRANS=test_gemm_trans
@@ -30,9 +33,10 @@ ifeq ($(PROF), 1)
 CFLAGS=-g -pg
 endif
 
-BUFTYPE=0
+BUFTYPE=1
 # Macros
 CFLAGS+=-DBUFTYPE=$(BUFTYPE)
+CFLAGS+=-I$(INCLUDE)
 
 ifeq ($(AMAJOR), 1)
 	CFLAGS+=-DAMAJOR
@@ -69,11 +73,11 @@ EXEC=gemm.elf
 ELF=.elf
 endif
 
-OBJ=gemm.o gemm_utils.o gemm_trans.o 
+OBJ=gemm_cpu.o gemm_utils.o gemm_trans.o gemm_block.o gemm_block_unit.o gemm_sds.o
 OBJS=$(addprefix $(OBJDIR), $(OBJ))
-DEPS=$(wildcard src/*.h) $(wildcard src/*.c) Makefile
+DEPS=$(wildcard $(INCLUDE)/*.h) $(wildcard $(SRCDIR)/*.c) Makefile
 
-all: obj $(EXEC) 
+all: obj test 
 
 test: obj test_unit test_block test_sds test_trans
 
@@ -88,13 +92,13 @@ $(EXEC): $(OBJS)
 $(TEST_GEMM_TRANS)$(ELF): $(OBJS) $(OBJDIR)$(TEST_GEMM_TRANS).o
 	$(CC) $(CFLAGS) $^ -o $@ $(LFLAGS)
 
-$(TEST_GEMM_BLOCK)$(ELF): $(OBJS) $(OBJDIR)$(TEST_GEMM_BLOCK).o $(OBJDIR)gemm_block.o $(OBJDIR)gemm_block_unit.o
+$(TEST_GEMM_BLOCK)$(ELF): $(OBJS) $(OBJDIR)$(TEST_GEMM_BLOCK).o
 	$(CC) $(CFLAGS) $^ -o $@ $(LFLAGS)
 
-$(TEST_GEMM_BLOCK_UNIT)$(ELF): $(OBJS) $(OBJDIR)$(TEST_GEMM_BLOCK_UNIT).o $(OBJDIR)gemm_block_unit.o
+$(TEST_GEMM_BLOCK_UNIT)$(ELF): $(OBJS) $(OBJDIR)$(TEST_GEMM_BLOCK_UNIT).o
 	$(CC) $(CFLAGS) $^ -o $@ $(LFLAGS)
 
-$(TEST_GEMM_SDS)$(ELF): $(OBJS) $(OBJDIR)$(TEST_GEMM_SDS).o $(OBJDIR)gemm_block.o $(OBJDIR)gemm_block_unit.o $(OBJDIR)gemm_sds.o
+$(TEST_GEMM_SDS)$(ELF): $(OBJS) $(OBJDIR)$(TEST_GEMM_SDS).o
 	$(CC) $(CFLAGS) $^ -o $@ $(LFLAGS)
 
 $(OBJDIR)%.o: %.c $(DEPS)
@@ -104,7 +108,7 @@ obj:
 	mkdir -p $(OBJDIR)
 
 tar:
-	tar cvf GEMM_$(VERSION)_$(DATE).tar.gz ../GEMM/sd_card ../GEMM/_sds/reports ../GEMM/src
+	tar cvf GEMM_$(VERSION)_$(DATE)_$(NAME).tar.gz ../GEMM/sd_card ../GEMM/_sds/reports ../GEMM/src
 
 .PHONY: clean
 
@@ -112,3 +116,4 @@ clean:
 	rm -rf $(OBJS) $(EXEC) $(TEST_GEMM_GRID)$(ELF)
 	rm -rf _sds *.bit *.elf sd_card/
 	rm -rf $(OBJDIR) 
+	rm -rf test_*
