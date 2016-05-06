@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
   clock_t start, end;
   start = clock();
   for (t = 0; t < iter; t ++) { 
-    gemm_block_units_mmult(A,B,T);
+    gemm_block_units_mmult(A,B,ALPHA,T);
     gemm_block_units_mplus(T,C,R);
   }
   end = clock();

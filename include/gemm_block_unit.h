@@ -11,6 +11,7 @@
 void gemm_block_units_mmult(
         float A[NUM_DEPTH*NUM_PIPES*BLK_M*BLK_K],
         float B[NUM_DEPTH*NUM_PIPES*BLK_K*BLK_N],
+        float ALPHA,
         float T[NUM_DEPTH*NUM_PIPES*BLK_M*BLK_N]);
 
 void gemm_block_units_mplus(

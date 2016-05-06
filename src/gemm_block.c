@@ -114,8 +114,6 @@ inline void gemm_block_calc_A(
           memcpy(&A_buf[d*PIPE_SIZE_MK],
                  &A_blk->mat[((i+d)*num_blk_K+k)*BLK_SIZE_MK],
                  sizeof(float)*PIPE_SIZE_MK);
-        for (t = 0; t < NUM_DEPTH*PIPE_SIZE_MK; t ++)
-          A_buf[t] *= ALPHA;
         
         // initialize B_buf
         for (p = 0; p < num_pipes; p ++) 
@@ -125,7 +123,7 @@ inline void gemm_block_calc_A(
                    sizeof(float)*BLK_SIZE_KN);
 
         // compute
-        gemm_block_units_mmult(A_buf,B_buf,T_buf);
+        gemm_block_units_mmult(A_buf,B_buf,ALPHA,T_buf);
         gemm_block_units_mplus(T_buf,C_buf,R_buf);
 
         // copy R_buf to C_buf
@@ -180,8 +178,6 @@ inline void gemm_block_calc_B(
           memcpy(&A_buf[d*PIPE_SIZE_MK],
                  &A_blk->mat[(i*num_blk_K+k)*BLK_SIZE_MK],
                  sizeof(float)*num_pipes*BLK_SIZE_MK);
-        for (t = 0; t < NUM_DEPTH*PIPE_SIZE_MK; t ++)
-          A_buf[t] *= ALPHA;
         
         // initialize B_buf
         for (d = 0; d < num_depth; d ++) 
@@ -191,7 +187,7 @@ inline void gemm_block_calc_B(
                    sizeof(float)*BLK_SIZE_KN);
 
         // compute
-        gemm_block_units_mmult(A_buf,B_buf,T_buf);
+        gemm_block_units_mmult(A_buf,B_buf,ALPHA,T_buf);
         gemm_block_units_mplus(T_buf,C_buf,R_buf);
 
         // copy R_buf to C_buf

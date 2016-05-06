@@ -4,6 +4,7 @@
 void mmult_kernel(
     float A[BLK_M][BLK_K],
     float B[BLK_K][BLK_N],
+    float ALPHA,
     float T[BLK_M*BLK_N])
 {
 #pragma HLS INLINE self
@@ -15,7 +16,7 @@ void mmult_kernel(
     #pragma HLS pipeline II=1
       float sum = 0.0;
       for (k = 0; k < BLK_K; k ++) {
-        float temp = A[i][k] * B[k][j];
+        float temp = ALPHA * A[i][k] * B[k][j];
         sum += temp;
       }
       T[i*BLK_N+j] = sum;
@@ -25,6 +26,7 @@ void mmult_kernel(
 void gemm_block_units_mmult_kernel(
         float A[NUM_DEPTH][NUM_PIPES][BLK_M][BLK_K],
         float B[NUM_DEPTH][NUM_PIPES][BLK_K][BLK_N],
+        float ALPHA,
         float T[NUM_DEPTH*NUM_PIPES*BLK_M*BLK_N])
 {
 #pragma HLS INLINE self
@@ -33,7 +35,7 @@ void gemm_block_units_mmult_kernel(
   #pragma HLS unroll
     for (p = 0; p < NUM_PIPES; p ++) {
     #pragma HLS unroll
-      mmult_kernel(A[d][p],B[d][p],&T[d*PIPE_SIZE_MN+p*BLK_SIZE_MN]);
+      mmult_kernel(A[d][p],B[d][p],ALPHA,&T[d*PIPE_SIZE_MN+p*BLK_SIZE_MN]);
     }
   }
 }
@@ -41,6 +43,7 @@ void gemm_block_units_mmult_kernel(
 void gemm_block_units_mmult(
         float A[NUM_DEPTH*NUM_PIPES*BLK_M*BLK_K],
         float B[NUM_DEPTH*NUM_PIPES*BLK_K*BLK_N],
+        float ALPHA,
         float T[NUM_DEPTH*NUM_PIPES*BLK_M*BLK_N])
 {
   float A_buf[NUM_DEPTH][NUM_PIPES][BLK_M][BLK_K];
@@ -61,7 +64,7 @@ void gemm_block_units_mmult(
         #pragma HLS pipeline II=1
           B_buf[d][p][i][j] = B[d*PIPE_SIZE_KN+p*BLK_SIZE_KN+i*BLK_N+j];
 
-  gemm_block_units_mmult_kernel(A_buf,B_buf,T);
+  gemm_block_units_mmult_kernel(A_buf,B_buf,ALPHA,T);
 }
 
 void gemm_block_units_mplus_kernel(

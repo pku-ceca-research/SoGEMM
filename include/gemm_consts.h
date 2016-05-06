@@ -1,11 +1,11 @@
 #ifndef GEMM_CONSTS_H__
 #define GEMM_CONSTS_H__
 
-#define BLK_M     32
+#define BLK_M     1
 #define BLK_N     32
 #define BLK_K     32
 
-#define NUM_PIPES 1
+#define NUM_PIPES 4
 #define NUM_DEPTH 1
 
 #define BLK_SIZE_MN (BLK_M*BLK_N)

@@ -1,5 +1,6 @@
 #include <string.h>
 #include <assert.h>
+#include <time.h>
 
 #include "gemm_consts.h"
 #include "gemm_utils.h"
@@ -7,19 +8,22 @@
 #include "gemm_block_unit.h"
 
 /* global buffers */
-float *A_buf,*B_buf,*C_buf,*R_buf,*T_buf;
+static float *A_buf,*B_buf,*C_buf,*R_buf,*T_buf;
 /* global shape */
-int blk_m = BLK_M;
-int blk_n = BLK_N;
-int blk_k = BLK_K;
-int num_depth = NUM_DEPTH;
-int num_pipes = NUM_PIPES;
-int blk_size_mk  = BLK_M * BLK_K;
-int blk_size_kn  = BLK_K * BLK_N;
-int blk_size_mn  = BLK_M * BLK_N;
-int pipe_size_mk = BLK_M * BLK_K * NUM_PIPES;
-int pipe_size_kn = BLK_K * BLK_N * NUM_PIPES;
-int pipe_size_mn = BLK_M * BLK_N * NUM_PIPES;
+static int blk_m = BLK_M;
+static int blk_n = BLK_N;
+static int blk_k = BLK_K;
+static int num_depth = NUM_DEPTH;
+static int num_pipes = NUM_PIPES;
+static int blk_size_mk  = BLK_M * BLK_K;
+static int blk_size_kn  = BLK_K * BLK_N;
+static int blk_size_mn  = BLK_M * BLK_N;
+static int pipe_size_mk = BLK_M * BLK_K * NUM_PIPES;
+static int pipe_size_kn = BLK_K * BLK_N * NUM_PIPES;
+static int pipe_size_mn = BLK_M * BLK_N * NUM_PIPES;
+/* global timers */
+static double total_init_A_buf_time;
+static double total_init_B_buf_time;
 
 // helpers
 void gemm_plain_alloc_buffers();
@@ -44,6 +48,20 @@ void gemm_plain(int TA, int TB, int M, int N, int K, float ALPHA,
   // main calculation
   gemm_plain_kernel(TA,TB,M,N,K,ALPHA,A,lda,B,ldb,BETA,C,ldc);
   gemm_plain_free_buffers(); 
+}
+
+void gemm_plain_init_clock() 
+{
+  total_init_A_buf_time = 0.0;
+  total_init_B_buf_time = 0.0;
+}
+
+double gemm_plain_end_clock() 
+{
+  printf("Timer results:\n");
+  printf("InitA: %lfs\n", total_init_A_buf_time);
+  printf("InitB: %lfs\n", total_init_B_buf_time);
+  return total_init_A_buf_time + total_init_B_buf_time;
 }
 
 void gemm_plain_alloc_buffers() 
@@ -91,6 +109,7 @@ void gemm_plain_kernel(int TA, int TB, int M, int N, int K, float ALPHA,
   /* original indices */
   int _i, _j, _k;
 
+  clock_t start, end;
   for (bi = 0; bi < M; bi += blk_m) {
     for (bj = 0; bj < N; bj += blk_n*num_depth) {
       // initialize C_buf
@@ -104,6 +123,7 @@ void gemm_plain_kernel(int TA, int TB, int M, int N, int K, float ALPHA,
                    
       for (bk = 0; bk < K; bk += blk_k*num_pipes) { 
         // initialize a
+        start = clock();
         for (d = 0; d < num_depth; d ++)
           for (p = 0; p < num_pipes; p ++)
             for (i = 0; i < blk_m; i ++)
@@ -111,11 +131,14 @@ void gemm_plain_kernel(int TA, int TB, int M, int N, int K, float ALPHA,
                 _i = i+bi, _k = p*blk_k+k+bk;
                 A_buf[d*pipe_size_mk+p*blk_size_mk+i*blk_k+k] = 
                   (_k < K && _i < M) ? 
-                  ALPHA * (TA ? A[_k*lda+_i]: A[_i*lda+_k]) :
+                  (TA ? A[_k*lda+_i]: A[_i*lda+_k]) :
                   0.0;
               }
+        end = clock();
+        total_init_A_buf_time += (double)(end-start)/CLOCKS_PER_SEC;
 
         // initialize B
+        start = clock();
         for (d = 0; d < num_depth; d ++)
           for (p = 0; p < num_pipes; p ++)
             for (k = 0; k < blk_k; k ++)
@@ -126,9 +149,11 @@ void gemm_plain_kernel(int TA, int TB, int M, int N, int K, float ALPHA,
                   (TB ? B[_j*ldb+_k] : B[_k*ldb+_j]) :
                   0.0;
               }
+        end = clock();
+        total_init_B_buf_time += (double)(end-start)/CLOCKS_PER_SEC;
 
         // compute
-        gemm_block_units_mmult(A_buf,B_buf,T_buf);
+        gemm_block_units_mmult(A_buf,B_buf,ALPHA,T_buf);
         gemm_block_units_mplus(T_buf,C_buf,R_buf);
 
         // copy back
