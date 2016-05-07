@@ -3,6 +3,10 @@
 
 # Objects
 obj/
+bin/
+obj.elf*/
+bin.elf*/
+lib/
 
 # SDSoC utilities
 sd_card/
@@ -10,4 +14,3 @@ _sds/
 *.out
 *.elf
 *.bit
-test_*

@@ -10,8 +10,8 @@
 // it seems that sds_alloc will fail in this case...
 #ifdef __SDSCC__
   #include "sds_lib.h"
-  #define MALLOC(x) sds_alloc((x))
-  #define FREE(x) sds_free((x))
+  #define MALLOC(x) malloc((x))
+  #define FREE(x) free((x))
 #else
   #define MALLOC malloc
   #define FREE free
