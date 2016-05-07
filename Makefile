@@ -93,9 +93,9 @@ RELEASE_CXX=$(CXX)
 
 ifeq ($(HW), 1)
 SDSFLAGS+=\
-	-sds-hw gemm_block_units_mmult gemm/gemm_block_unit.c -clkid 2 -sds-end\
-	-sds-hw gemm_block_units_mplus gemm/gemm_block_unit.c -clkid 2 -sds-end\
-	-dmclkid 2
+	-sds-hw gemm_block_units_mmult gemm/gemm_block_unit.c -clkid 1 -sds-end\
+	-sds-hw gemm_block_units_mplus gemm/gemm_block_unit.c -clkid 1 -sds-end\
+	-dmclkid 1
 endif
 
 ELF=.elf

@@ -10,17 +10,17 @@
 /* global buffers */
 float *A_buf,*B_buf,*C_buf,*R_buf,*T_buf;
 /* global shape */
-static int blk_m = BLK_M;
-static int blk_n = BLK_N;
-static int blk_k = BLK_K;
-static int num_depth = NUM_DEPTH;
-static int num_pipes = NUM_PIPES;
-static int blk_size_mk  = BLK_M * BLK_K;
-static int blk_size_kn  = BLK_K * BLK_N;
-static int blk_size_mn  = BLK_M * BLK_N;
-static int pipe_size_mk = BLK_M * BLK_K * NUM_PIPES;
-static int pipe_size_kn = BLK_K * BLK_N * NUM_PIPES;
-static int pipe_size_mn = BLK_M * BLK_N * NUM_PIPES;
+const int blk_m = BLK_M;
+const int blk_n = BLK_N;
+const int blk_k = BLK_K;
+const int num_depth = NUM_DEPTH;
+const int num_pipes = NUM_PIPES;
+const int blk_size_mk  = BLK_M * BLK_K;
+const int blk_size_kn  = BLK_K * BLK_N;
+const int blk_size_mn  = BLK_M * BLK_N;
+const int pipe_size_mk = BLK_M * BLK_K * NUM_PIPES;
+const int pipe_size_kn = BLK_K * BLK_N * NUM_PIPES;
+const int pipe_size_mn = BLK_M * BLK_N * NUM_PIPES;
 /* global timers */
 static double total_init_A_buf_time;
 static double total_init_B_buf_time;
@@ -131,7 +131,7 @@ void gemm_plain_kernel(int TA, int TB, int M, int N, int K, float ALPHA,
                 _i = i+bi, _k = p*blk_k+k+bk;
                 A_buf[d*pipe_size_mk+p*blk_size_mk+i*blk_k+k] = 
                   (_k < K && _i < M) ? 
-                  ALPHA * (TA ? A[_k*lda+_i]: A[_i*lda+_k]) :
+                  (TA ? A[_k*lda+_i]: A[_i*lda+_k]) :
                   0.0;
               }
         end = clock();

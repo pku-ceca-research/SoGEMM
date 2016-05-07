@@ -8,19 +8,24 @@ void mmult_kernel(
     float T[BLK_M*BLK_N])
 {
 #pragma HLS INLINE self
-#pragma HLS array_partition variable=A block factor=16 dim=2
-#pragma HLS array_partition variable=B block factor=16 dim=1
+#pragma HLS array_partition variable=A block factor=8 dim=2
+#pragma HLS array_partition variable=B block factor=8 dim=1
   int i, j, k;
-  for (i = 0; i < BLK_M; i ++) 
+  float A_buf[BLK_K];
+  for (i = 0; i < BLK_M; i ++) {
+    for (k = 0; k < BLK_K; k ++)
+    #pragma HLS unroll
+      A_buf[k] = A[i][k] * ALPHA;
     for (j = 0; j < BLK_N; j ++) {
     #pragma HLS pipeline II=1
       float sum = 0.0;
       for (k = 0; k < BLK_K; k ++) {
-        float temp = A[i][k] * B[k][j];
+        float temp = A_buf[k] * B[k][j];
         sum += temp;
       }
       T[i*BLK_N+j] = sum;
     }
+  }
 }
 
 void gemm_block_units_mmult_kernel(
