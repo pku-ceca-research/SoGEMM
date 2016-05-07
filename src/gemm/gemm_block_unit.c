@@ -16,7 +16,7 @@ void mmult_kernel(
     #pragma HLS pipeline II=1
       float sum = 0.0;
       for (k = 0; k < BLK_K; k ++) {
-        float temp = ALPHA * A[i][k] * B[k][j];
+        float temp = A[i][k] * B[k][j];
         sum += temp;
       }
       T[i*BLK_N+j] = sum;

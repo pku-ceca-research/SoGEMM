@@ -8,7 +8,7 @@
 #include "gemm_block_unit.h"
 
 /* global buffers */
-static float *A_buf,*B_buf,*C_buf,*R_buf,*T_buf;
+float *A_buf,*B_buf,*C_buf,*R_buf,*T_buf;
 /* global shape */
 static int blk_m = BLK_M;
 static int blk_n = BLK_N;
@@ -66,11 +66,11 @@ double gemm_plain_end_clock()
 
 void gemm_plain_alloc_buffers() 
 {
-  A_buf = MALLOC(sizeof(float)*num_depth*pipe_size_mk);
-  B_buf = MALLOC(sizeof(float)*num_depth*pipe_size_kn);
-  T_buf = MALLOC(sizeof(float)*num_depth*pipe_size_mn);
-  C_buf = MALLOC(sizeof(float)*num_depth*blk_size_mn);
-  R_buf = MALLOC(sizeof(float)*num_depth*blk_size_mn);
+  A_buf = (float*)MALLOC(sizeof(float)*num_depth*pipe_size_mk);
+  B_buf = (float*)MALLOC(sizeof(float)*num_depth*pipe_size_kn);
+  T_buf = (float*)MALLOC(sizeof(float)*num_depth*pipe_size_mn);
+  C_buf = (float*)MALLOC(sizeof(float)*num_depth*blk_size_mn);
+  R_buf = (float*)MALLOC(sizeof(float)*num_depth*blk_size_mn);
 
   if (!A_buf || !B_buf || !C_buf || !T_buf || !R_buf) {
     fprintf(stderr, "Error buffer allocation\n");
@@ -89,11 +89,11 @@ void gemm_plain_clean_buffers()
 
 void gemm_plain_free_buffers()
 {
-  free(A_buf);
-  free(B_buf);
-  free(T_buf);
-  free(C_buf);
-  free(R_buf);
+  FREE(A_buf);
+  FREE(B_buf);
+  FREE(T_buf);
+  FREE(C_buf);
+  FREE(R_buf);
 }
 
 void gemm_plain_kernel(int TA, int TB, int M, int N, int K, float ALPHA, 
@@ -131,7 +131,7 @@ void gemm_plain_kernel(int TA, int TB, int M, int N, int K, float ALPHA,
                 _i = i+bi, _k = p*blk_k+k+bk;
                 A_buf[d*pipe_size_mk+p*blk_size_mk+i*blk_k+k] = 
                   (_k < K && _i < M) ? 
-                  (TA ? A[_k*lda+_i]: A[_i*lda+_k]) :
+                  ALPHA * (TA ? A[_k*lda+_i]: A[_i*lda+_k]) :
                   0.0;
               }
         end = clock();

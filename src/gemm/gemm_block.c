@@ -40,24 +40,16 @@ void gemm_block(int TA, int TB, int M, int N, int K, float ALPHA,
 
 void gemm_block_kernel(float ALPHA, float BETA, BlockedMatrix *A_blk, BlockedMatrix *B_blk, BlockedMatrix *C_blk)
 {
-#if BUFTYPE == 0
-  static float A_buf[NUM_DEPTH*PIPE_SIZE_MK];
-  static float B_buf[NUM_DEPTH*PIPE_SIZE_KN];
-  static float T_buf[NUM_DEPTH*PIPE_SIZE_MN];
-  static float C_buf[NUM_DEPTH*BLK_SIZE_MN];
-  static float R_buf[NUM_DEPTH*BLK_SIZE_MN];
-#elif BUFTYPE == 1
-  float* A_buf = MALLOC(sizeof(float)*NUM_DEPTH*PIPE_SIZE_MK);
-  float* B_buf = MALLOC(sizeof(float)*NUM_DEPTH*PIPE_SIZE_KN);
-  float* T_buf = MALLOC(sizeof(float)*NUM_DEPTH*PIPE_SIZE_MN);
-  float* C_buf = MALLOC(sizeof(float)*NUM_DEPTH*BLK_SIZE_MN);
-  float* R_buf = MALLOC(sizeof(float)*NUM_DEPTH*BLK_SIZE_MN);
+  float* A_buf = (float*)MALLOC(sizeof(float)*NUM_DEPTH*PIPE_SIZE_MK);
+  float* B_buf = (float*)MALLOC(sizeof(float)*NUM_DEPTH*PIPE_SIZE_KN);
+  float* T_buf = (float*)MALLOC(sizeof(float)*NUM_DEPTH*PIPE_SIZE_MN);
+  float* C_buf = (float*)MALLOC(sizeof(float)*NUM_DEPTH*BLK_SIZE_MN);
+  float* R_buf = (float*)MALLOC(sizeof(float)*NUM_DEPTH*BLK_SIZE_MN);
 
   if (!A_buf || !B_buf || !C_buf || !T_buf || !R_buf) {
     fprintf(stderr, "Error buffer allocation\n");
     exit(1);
   }
-#endif
 
   memset(A_buf, 0, sizeof(float)*NUM_DEPTH*PIPE_SIZE_MK);
   memset(B_buf, 0, sizeof(float)*NUM_DEPTH*PIPE_SIZE_KN);
@@ -71,13 +63,11 @@ void gemm_block_kernel(float ALPHA, float BETA, BlockedMatrix *A_blk, BlockedMat
   gemm_block_calc_B(ALPHA,BETA,A_blk,B_blk,C_blk,A_buf,B_buf,T_buf,C_buf,R_buf);
 #endif
 
-#if BUFTYPE == 1
-  free(A_buf);
-  free(B_buf);
-  free(T_buf);
-  free(C_buf);
-  free(R_buf);
-#endif
+  FREE(A_buf);
+  FREE(B_buf);
+  FREE(T_buf);
+  FREE(C_buf);
+  FREE(R_buf);
 }
 
 inline void gemm_block_calc_A(
