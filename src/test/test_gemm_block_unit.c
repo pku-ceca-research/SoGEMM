@@ -5,10 +5,17 @@
 #include <math.h>
 #include <time.h>
 #include <getopt.h>
+#include <sys/time.h>
 
 #include "gemm_utils.h"
 #include "gemm_consts.h"
-#include "gemm_block_unit.h"
+#include "gemm_accel.h"
+
+#ifdef __SDSCC__
+#include "sds_lib.h"
+#define malloc(x) (sds_alloc((x)))
+#define free(x) (sds_free((x)))
+#endif
 
 int main(int argc, char *argv[]) {
   srand(time(NULL));
@@ -25,12 +32,12 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-  float *A = (float *) MALLOC(sizeof(float)*NUM_DEPTH*PIPE_SIZE_MK);
-  float *B = (float *) MALLOC(sizeof(float)*NUM_DEPTH*PIPE_SIZE_KN);
-  float *T = (float *) MALLOC(sizeof(float)*NUM_DEPTH*PIPE_SIZE_MN);
-  float *C = (float *) MALLOC(sizeof(float)*NUM_DEPTH*BLK_SIZE_MN);
-  float *R = (float *) MALLOC(sizeof(float)*NUM_DEPTH*BLK_SIZE_MN);
-  float *R_golden = (float *) MALLOC(sizeof(float)*NUM_DEPTH*BLK_SIZE_MN);
+  float *A = (float *) malloc(sizeof(float)*BLK_SIZE_MK);
+  float *B = (float *) malloc(sizeof(float)*BLK_SIZE_KN);
+  float *T = (float *) malloc(sizeof(float)*BLK_SIZE_MN);
+  float *C = (float *) malloc(sizeof(float)*BLK_SIZE_MN);
+  float *R = (float *) malloc(sizeof(float)*BLK_SIZE_MN);
+  float *R_golden = (float *) malloc(sizeof(float)*BLK_SIZE_MN);
   if (!A || !B || !T || !C || !R || !R_golden) {
     fprintf(stderr, "Can't initialize memories\n");
     exit(1);
@@ -43,10 +50,10 @@ int main(int argc, char *argv[]) {
   memset(R, 0, sizeof(float)*NUM_DEPTH*BLK_SIZE_MN);
   memset(R_golden, 0, sizeof(float)*NUM_DEPTH*BLK_SIZE_MN);
 
-  int d, p, i, j, k;
+  int i, j, k;
   int t;
   float ALPHA = 0.1;
-  float BETA  = 1.0;
+  float BETA  = 0;
 
   PRINT_TITLE("TEST gemm_block_unit");
   printf("NUM_ITER:\t %d\n", iter);
@@ -58,45 +65,42 @@ int main(int argc, char *argv[]) {
   printf("ALPHA:\t\t %f\n", ALPHA);
   printf("BETA:\t\t %f\n", BETA);
 
-  for (i = 0; i < NUM_DEPTH*PIPE_SIZE_MK; i ++) A[i] = (float)rand()/RAND_MAX;
-  for (i = 0; i < NUM_DEPTH*PIPE_SIZE_KN; i ++) B[i] = (float)rand()/RAND_MAX;
-  for (i = 0; i < NUM_DEPTH*PIPE_SIZE_MN; i ++) T[i] = 0.0;
-  for (i = 0; i < NUM_DEPTH*BLK_SIZE_MN;  i ++) {
+  for (i = 0; i < BLK_SIZE_MK; i ++) A[i] = 0.1;// (float)rand()/RAND_MAX;
+  for (i = 0; i < BLK_SIZE_KN; i ++) B[i] = 0.1;// (float)rand()/RAND_MAX;
+  for (i = 0; i < BLK_SIZE_MN; i ++) T[i] = 0.0;
+  for (i = 0; i < BLK_SIZE_MN; i ++) {
     R[i] = 0.0;
     C[i] = (float)rand()/RAND_MAX;
   }
   printf("Matrix initialised\n");
   
-  clock_t start, end;
-  start = clock();
-  for (t = 0; t < iter; t ++) { 
-    gemm_block_units_mmult(A,B,ALPHA,T);
-    gemm_block_units_mplus(T,C,R);
-  }
-  end = clock();
-  printf("FINISHED origin: %lfs\n", (double)(end-start)/CLOCKS_PER_SEC);
+  struct timeval start_time, end_time;
+  double total_time;
 
-  start = clock();
+  gettimeofday(&start_time, NULL);
+  for (t = 0; t < iter; t ++)
+    gemm_accel(A,B,C,R,ALPHA,BETA);
+  gettimeofday(&end_time, NULL);
+  total_time = (double)(end_time.tv_sec-start_time.tv_sec)+(end_time.tv_usec-start_time.tv_usec)*1e-6;
+  printf("FINISHED origin: %lfs GFLOPS: %lf\n", total_time/iter, (BLK_M*BLK_N*BLK_K*3)/total_time*iter*1e-9);
+
+  gettimeofday(&start_time, NULL);
   for (t = 0; t < iter; t++) {
     for (i = 0; i < NUM_DEPTH*BLK_SIZE_MN; i ++) 
-      R_golden[i] = C[i]*BETA;
+      R_golden[i] = C[i];
 
-    for (d = 0; d < NUM_DEPTH; d ++)
-      for (p = 0; p < NUM_PIPES; p ++)
-        for (i = 0; i < BLK_M; i ++)
-          for (j = 0; j < BLK_N; j ++)
-            for (k = 0; k < BLK_K; k ++)
-              R_golden[d*BLK_SIZE_MN+i*BLK_N+j] += 
-                ALPHA * 
-                A[d*PIPE_SIZE_MK+p*BLK_SIZE_MK+i*BLK_K+k] * 
-                B[d*PIPE_SIZE_KN+p*BLK_SIZE_KN+k*BLK_N+j];
+    for (i = 0; i < BLK_M; i ++)
+      for (j = 0; j < BLK_N; j ++)
+        for (k = 0; k < BLK_K; k ++)
+          R_golden[i*BLK_N+j] += 
+            ALPHA * A[i*BLK_K+k] * B[k*BLK_N+j];
   }
-  end = clock();
-    
-  printf("FINISHED golden: %lfs\n", (double)(end-start)/CLOCKS_PER_SEC);
+  gettimeofday(&end_time, NULL);
+  total_time = (double)(end_time.tv_sec-start_time.tv_sec)+(end_time.tv_usec-start_time.tv_usec)*1e-6;
+  printf("FINISHED golden: %lfs\n", total_time/iter);
 
   int is_equal = 1;
-  for (i = 0; i < NUM_DEPTH*BLK_SIZE_MN; i ++) {
+  for (i = 0; i < BLK_SIZE_MN; i ++) {
     if (fabsf(R[i]-R_golden[i]) >= 1e-5)
       printf("%lf %lf\n", R[i], R_golden[i]);
 

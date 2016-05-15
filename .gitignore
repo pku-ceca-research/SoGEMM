@@ -7,6 +7,8 @@ bin/
 obj.elf*/
 bin.elf*/
 lib/
+build*
+archives/
 
 # SDSoC utilities
 sd_card/

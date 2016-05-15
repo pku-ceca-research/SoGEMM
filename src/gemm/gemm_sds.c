@@ -13,7 +13,9 @@
 #include "gemm_consts.h"
 #include "gemm_types.h"
 #include "gemm_trans.h"
+#ifdef GEMM_BLOCK
 #include "gemm_block.h"
+#endif
 #include "gemm_plain.h"
 
 

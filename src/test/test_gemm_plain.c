@@ -5,6 +5,7 @@
 #include <math.h>
 #include <time.h>
 #include <getopt.h>
+#include <sys/time.h>
 
 #include "gemm_consts.h"
 #include "gemm_utils.h"
@@ -53,28 +54,34 @@ int main(int argc, char *argv[])
   init_matrix();
   
   int I;
-  clock_t start, end;
+  struct timeval start_time, end_time;
+  double total_time;
 
   PRINT_HIGHLIGHT("TEST origin");
-  start = clock();
-  gemm_plain_init_clock();
+
+  gettimeofday(&start_time, NULL);
   for (I = 0; I < iter; I ++)
     gemm_plain(TA,TB,M,N,K,ALPHA,A,lda,B,ldb,BETA,C,ldc);
-  end = clock();
-  double total_time = (double)(end-start)/CLOCKS_PER_SEC;
-  double extra_time = gemm_plain_end_clock();
-  printf("Finished **origin**: %lfs extra=%lfs compute=%lfs\n", 
-      total_time/iter,
-      extra_time/iter,
-      (total_time-extra_time)/iter);
+  gettimeofday(&end_time, NULL);
+  total_time =
+    (double)(end_time.tv_sec-start_time.tv_sec)+
+    (end_time.tv_usec-start_time.tv_usec)*1e-6;
+  printf("FINISHED origin: %lfs GFLOPS: %lf\n", 
+      total_time/iter, 
+      ((double)M*N*K*3)/total_time*iter*1e-9);
 
 
   PRINT_HIGHLIGHT("TEST golden");
-  start = clock();
+  gettimeofday(&start_time, NULL);
   for (I = 0; I < iter; I ++)
     gemm_cpu(TA,TB,M,N,K,ALPHA,A,lda,B,ldb,BETA,C_golden,ldc);
-  end = clock();
-  printf("Finished **golden**: %lfs\n", (double)(end-start)/CLOCKS_PER_SEC/iter);
+  gettimeofday(&end_time, NULL);
+  total_time =
+    (double)(end_time.tv_sec-start_time.tv_sec)+
+    (end_time.tv_usec-start_time.tv_usec)*1e-6;
+  printf("FINISHED origin: %lfs GFLOPS: %lf\n", 
+      total_time/iter, 
+      ((double)M*N*K*3)/total_time*iter*1e-9);
 
   if (compare()) {
     PRINT_PASSED("PASSED");
@@ -82,12 +89,14 @@ int main(int argc, char *argv[])
     PRINT_FAILED("FAILED");
   }
 
+#ifdef BLOCK
   PRINT_HIGHLIGHT("TEST blocked (additional)");
   start = clock();
   for (I = 0; I < iter; I ++)
     gemm_block(TA,TB,M,N,K,ALPHA,A,lda,B,ldb,BETA,C,ldc);
   end = clock();
   printf("Finished **blocked**: %lfs\n", (double)(end-start)/CLOCKS_PER_SEC/iter);
+#endif
 
   free_matrix();
 
