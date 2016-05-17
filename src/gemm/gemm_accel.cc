@@ -2,14 +2,17 @@
 #include <string.h>
 #include "gemm_consts.h"
 #include "gemm_block_unit.h"
+#include "gemm_accel.h"
 #include "gemm_accel_hls.h"
 
-void gemm_accel(
+template<>
+void gemm_accel<float,float>(
     float A[BLK_M*BLK_K], 
     float B[BLK_K*BLK_N], 
     float C[BLK_M*BLK_N], 
     float R[BLK_M*BLK_N],
-    float ALPHA, float BETA)
+    float ALPHA,
+    float BETA)
 {
 #ifdef GEMM_FULL_MODE
 float T[BLK_M*BLK_N];
@@ -24,7 +27,7 @@ float T[BLK_M*BLK_N];
 #endif
 
 #ifdef GEMM_HLS
-  gemm_accel_full(A,B,C,ALPHA,R);
+  gemm_accel_full<float,float>(A,B,C,ALPHA,R);
 #else
   gemm_block_units_mmult(A, B, ALPHA, T);
   gemm_block_units_mplus(T, C, R);

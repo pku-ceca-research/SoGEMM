@@ -18,7 +18,6 @@
 #endif
 #include "gemm_plain.h"
 
-
 void gemm_sds(int TA, int TB, int M, int N, int K,
     float ALPHA,
     float *A, int lda,
@@ -29,6 +28,6 @@ void gemm_sds(int TA, int TB, int M, int N, int K,
 #ifdef GEMM_BLOCK
   gemm_block(TA,TB,M,N,K,ALPHA,A,lda,B,ldb,BETA,C,ldc);
 #else
-  gemm_plain(TA,TB,M,N,K,ALPHA,A,lda,B,ldb,BETA,C,ldc);
+  gemm_plain<float,float>(TA,TB,M,N,K,ALPHA,A,lda,B,ldb,BETA,C,ldc);
 #endif
 }

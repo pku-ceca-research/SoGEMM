@@ -7,11 +7,12 @@
 #pragma SDS data access_pattern(A:SEQUENTIAL, B:SEQUENTIAL, C:SEQUENTIAL, R:SEQUENTIAL)
 #pragma SDS data data_mover(A:AXIDMA_SIMPLE, B:AXIDMA_SIMPLE, C:AXIDMA_SIMPLE, R:AXIDMA_SIMPLE)
 #endif
+template <typename VectorT, typename ScalarT>
 void gemm_accel_full(
-    float A[BLK_M*BLK_K], 
-    float B[BLK_M*BLK_K], 
-    float C[BLK_M*BLK_N], 
-    float ALPHA, 
-    float R[BLK_M*BLK_N]);
+    VectorT A[BLK_M*BLK_K], 
+    VectorT B[BLK_M*BLK_K], 
+    VectorT C[BLK_M*BLK_N], 
+    ScalarT ALPHA, 
+    VectorT R[BLK_M*BLK_N]);
 
 #endif

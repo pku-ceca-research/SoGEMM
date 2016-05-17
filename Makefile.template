@@ -145,13 +145,13 @@ SDSFLAGS += -sds-hw gemv_accel $(GEMV_SRCDIR)gemv_accel.cc -clkid $(GEMV_CLOCK_I
 endif
 ifeq ($(GEMM_FULL_MODE), 1)
 CFLAGS+=-DGEMM_FULL_MODE
-SDSFLAGS+= -sds-hw gemm_accel gemm/gemm_accel.c\
+SDSFLAGS+= -sds-hw gemm_accel gemm/gemm_accel.cc\
 					 -files $(GEMM_SRCDIR)gemm_block_unit.c,$(GEMM_SRCDIR)gemm_accel_hls.c\
 					 -clkid $(GEMM_CLOCK_ID) -sds-end
 else
 	ifeq ($(GEMM_HLS), 1)
 		SDSFLAGS+=\
-			-sds-hw gemm_accel_full $(GEMM_SRCDIR)gemm_accel_hls.c -clkid $(GEMM_CLOCK_ID) -sds-end
+			-sds-hw gemm_accel_full $(GEMM_SRCDIR)gemm_accel_hls.cc -clkid $(GEMM_CLOCK_ID) -sds-end
 	else
 		SDSFLAGS+=\
 			-sds-hw gemm_block_units_mmult $(GEMM_SRCDIR)gemm_block_unit.c -clkid $(GEMM_CLOCK_ID) -sds-end\
@@ -171,7 +171,10 @@ endif
 ELF=.elf
 endif
 
-GEMM_OBJ=gemm_cpu.o gemm_utils.o gemm_trans.o gemm_plain.o gemm_sds.o gemm_block_unit.o gemm_accel.o gemm_accel_hls.o
+GEMM_OBJ=gemm_cpu.o gemm_utils.o gemm_trans.o gemm_plain.o gemm_sds.o gemm_accel.o gemm_accel_hls.o
+ifeq ($(GEMM_HLS), 0)
+GEMM_OBJ+= gemm_block_unit.o
+endif
 GEMV_OBJ=gemv_sds.o gemv_accel.o gemv_accel_call.o
 ifeq ($(BLOCK), 1)
 GEMM_OBJ+=gemm_block.o
@@ -190,7 +193,7 @@ $(LIBDIR)$(LIBACCEL): $(GEMM_OBJS) $(GEMV_OBJS)
 	@ echo "RELEASE_CXX -o $@"
 	@ $(RELEASE_CXX) $(CFLAGS) $^ -shared -o $@
 
-$(GEMM_OBJDIR)%.o: $(GEMM_SRCDIR)%.c $(DEPS)
+$(GEMM_OBJDIR)%.o: $(GEMM_SRCDIR)%.cc $(DEPS)
 	@ echo "CXX -o $@"
 	@ $(CXX) $(CFLAGS) -c $< -o $@
 

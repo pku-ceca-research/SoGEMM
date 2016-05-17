@@ -18,11 +18,13 @@
 // #pragma SDS data copy(A[0:BLK_M][0:BLK_K], B[0:BLK_K][0:BLK_N], C[0:BLK_M][0:BLK_N], R[0:BLK_M][0:BLK_N])
 // #endif
 #endif
+template <typename VectorT, typename ScalarT>
 void gemm_accel(
-    float A[BLK_M*BLK_K], 
-    float B[BLK_K*BLK_N], 
-    float C[BLK_M*BLK_N], 
-    float R[BLK_M*BLK_N],
-    float ALPHA, float BETA);
+    VectorT A[BLK_M*BLK_K], 
+    VectorT B[BLK_K*BLK_N], 
+    VectorT C[BLK_M*BLK_N], 
+    VectorT R[BLK_M*BLK_N],
+    ScalarT ALPHA, 
+    ScalarT BETA);
 
 #endif
