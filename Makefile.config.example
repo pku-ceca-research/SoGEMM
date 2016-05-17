@@ -28,7 +28,7 @@
 # SCALE 4:  56 X  56 (super)
 # SCALE 5: 128 X 128 (zc706)
 # SCALE 6: 176 X 176 (super-zc706)
-#
+# SCALE 7:  64 X  64 X 56 (irregular)
 # GEMM_SCALE := 0
 
 # Decide whether to put ALPHA coefficience in HW logics

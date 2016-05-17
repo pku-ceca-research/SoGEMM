@@ -23,6 +23,9 @@ void gemm_accel_kernel(
 #elif GEMM_SCALE == 6
 #pragma HLS array_partition variable=A block factor=88 dim=2
 #pragma HLS array_partition variable=B block factor=88 dim=1
+#elif GEMM_SCALE == 7
+#pragma HLS array_partition variable=A block factor=32 dim=2
+#pragma HLS array_partition variable=B block factor=32 dim=1
 #else
 #pragma HLS array_partition variable=A block factor=16 dim=2
 #pragma HLS array_partition variable=B block factor=16 dim=1
@@ -73,17 +76,30 @@ void gemm_accel_full(
     float R[BLK_M*BLK_N])
 {
   int i, j;
+  int lda = BLK_N, ldb = BLK_N, ldc = BLK_N;
   float A_buf[BLK_M][BLK_K], B_buf[BLK_K][BLK_N], C_buf[BLK_M][BLK_N];
   RowCopy: for (i = 0; i < BLK_M; i ++) 
     ColCopy: for (j = 0; j < BLK_N; j ++) {
     #pragma HLS pipeline II=1
-    #ifdef GEMM_WITH_ALPHA
-      A_buf[i][j] = ALPHA * A[i*BLK_N+j];
-    #else 
-      A_buf[i][j] = A[i*BLK_N+j];
+    /**
+     * if the matrix is irregular, then A's 2nd dim will not equal to BLK_N. 
+     * however, as BLK_M == BLK_N, then ldb will remain the same
+     */
+    #ifdef GEMM_IRREGULAR
+      lda = BLK_K;
+      if (j < BLK_K) {
     #endif
-      B_buf[i][j] = B[i*BLK_N+j];
-      C_buf[i][j] = C[i*BLK_N+j];
+      /* GEMM_WITH_ALPHA is compatible with outer configurations */
+    #ifdef GEMM_WITH_ALPHA
+      A_buf[i][j] = ALPHA * A[i*lda+j];
+    #else 
+      A_buf[i][j] = A[i*lda+j];
+    #endif
+    #ifdef GEMM_IRREGULAR
+      }
+    #endif
+      B_buf[i][j] = B[i*ldb+j];
+      C_buf[i][j] = C[i*ldc+j];
     }
 
   gemm_accel_kernel(A_buf,B_buf,C_buf,ALPHA,R);
