@@ -1,8 +1,17 @@
 #include "gemm_accel_hls.h"
 
+#ifdef GEMM_HALF_FLOAT
+/**
+ * GEMM_HALF_FLOAT switches the input array data type. 
+ * It also controls the behaviour of this whole gemm_sds function.
+ * If it's not under the VHLS environment, nothing will happen.
+ */
+
+#endif
+
 void gemm_accel_kernel(
     float A[BLK_M][BLK_K], 
-    float B[BLK_N][BLK_K], 
+    float B[BLK_K][BLK_N], 
     float C[BLK_M][BLK_N], 
     float ALPHA, 
     float R[BLK_M*BLK_N])
@@ -24,8 +33,8 @@ void gemm_accel_kernel(
 #pragma HLS array_partition variable=A block factor=88 dim=2
 #pragma HLS array_partition variable=B block factor=88 dim=1
 #elif GEMM_SCALE == 7
-#pragma HLS array_partition variable=A block factor=32 dim=2
-#pragma HLS array_partition variable=B block factor=32 dim=1
+#pragma HLS array_partition variable=A block factor=30 dim=2
+#pragma HLS array_partition variable=B block factor=30 dim=1
 #else
 #pragma HLS array_partition variable=A block factor=16 dim=2
 #pragma HLS array_partition variable=B block factor=16 dim=1
@@ -57,7 +66,7 @@ void gemm_accel_kernel(
         dsp = sum + res;
         sum = dsp;
       }
-      for (k = GEMM_DSP_UPPER; k < BLK_N; k ++) {
+      for (k = GEMM_DSP_UPPER; k < BLK_K; k ++) {
         res = A[i][k] * B[k][j];
         tmp = sum + res;
         sum = tmp;
@@ -87,7 +96,7 @@ void gemm_accel_full(
      */
     #ifdef GEMM_IRREGULAR
       lda = BLK_K;
-      if (j < BLK_K) {
+      if (j < BLK_K) 
     #endif
       /* GEMM_WITH_ALPHA is compatible with outer configurations */
     #ifdef GEMM_WITH_ALPHA
@@ -96,9 +105,10 @@ void gemm_accel_full(
       A_buf[i][j] = A[i*lda+j];
     #endif
     #ifdef GEMM_IRREGULAR
-      }
+      if (i < BLK_K) 
     #endif
       B_buf[i][j] = B[i*ldb+j];
+
       C_buf[i][j] = C[i*ldc+j];
     }
 

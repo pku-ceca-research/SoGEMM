@@ -3,6 +3,7 @@
 
 #if GEMM_SCALE >= 7 // irregular
   #define GEMM_IRREGULAR
+  #define GEMM_RESOURCE_PARTITION
   #if GEMM_SCALE == 7
     #define DIM 64
     #define VEC 56

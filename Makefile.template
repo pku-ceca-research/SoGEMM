@@ -171,7 +171,10 @@ endif
 ELF=.elf
 endif
 
-GEMM_OBJ=gemm_cpu.o gemm_utils.o gemm_trans.o gemm_plain.o gemm_sds.o gemm_block_unit.o gemm_accel.o gemm_accel_hls.o
+GEMM_OBJ=gemm_cpu.o gemm_utils.o gemm_trans.o gemm_plain.o gemm_sds.o gemm_accel.o gemm_accel_hls.o
+ifeq ($(GEMM_HLS), 0)
+GEMM_OBJ+= gemm_block_unit.o
+endif
 GEMV_OBJ=gemv_sds.o gemv_accel.o gemv_accel_call.o
 ifeq ($(BLOCK), 1)
 GEMM_OBJ+=gemm_block.o
