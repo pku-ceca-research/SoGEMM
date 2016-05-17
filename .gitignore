@@ -9,6 +9,7 @@ bin.elf*/
 lib/
 build*
 archives/
+final*
 
 # SDSoC utilities
 sd_card/

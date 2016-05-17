@@ -14,7 +14,7 @@
 #define free(x) (sds_free(x))
 #endif
 
-static float *A_buf, *x_buf;
+static float *A_buf, *X_buf, *Y_buf, *R_buf;
 
 void gemv_sds_kernel(int T, int M, int N, float ALPHA, 
     const float *A, int lda,
@@ -24,17 +24,52 @@ void gemv_sds_kernel(int T, int M, int N, float ALPHA,
 
 void gemv_sds(int TA, int M, int N, float ALPHA, 
     const float *A, int lda,
-    const float *x, int ldx,
+    const float *X, int ldx,
     float BETA, 
-    float *y, int ldy)
+    float *Y, int ldy)
 {
-  A_buf = (float *) malloc(sizeof(float)*GEMV_BLK_N);
-  x_buf = (float *) malloc(sizeof(float)*GEMV_BLK_N);
+  A_buf = (float *) malloc(sizeof(float)*GEMV_BLK_N*GEMV_BLK_M);
+  X_buf = (float *) malloc(sizeof(float)*GEMV_BLK_N);
+  Y_buf = (float *) malloc(sizeof(float)*GEMV_BLK_M);
+  R_buf = (float *) malloc(sizeof(float)*GEMV_BLK_M);
 
-  gemv_sds_kernel(TA, M, N, ALPHA, A, lda, x, ldx, BETA, y, ldy);
+  gemv_sds_kernel(TA, M, N, ALPHA, A, lda, X, ldx, BETA, Y, ldy);
 
   free(A_buf);
-  free(x_buf);
+  free(X_buf);
+  free(Y_buf);
+  free(R_buf);
+}
+
+inline void copy_to_A_buf(int T, const float *A, int bi, int bj, int M, int N, int lda)
+{
+  int i, j, _i, _j;
+  if (!T) {
+    for (i = 0; i < GEMV_BLK_M; i ++) {
+      for (j = 0; j < GEMV_BLK_N; j ++) {
+        _i = bi + i, _j = bj + j;
+        A_buf[i*GEMV_BLK_N+j] = 
+          (_i<M && _j<N) ? A[_i*lda+_j] : 0.0;
+      }
+    }
+  } else {
+    for (i = 0; i < GEMV_BLK_M; i ++) {
+      for (j = 0; j < GEMV_BLK_N; j ++) {
+        _i = bi + i, _j = bj + j;
+        A_buf[i*GEMV_BLK_N+j] =
+          (_i<N && _j<M) ? A[_j*lda+_i] : 0.0;
+      }
+    }
+  }
+}
+
+inline void copy_to_X_buf(const float *X, int bi, int N, int ldx) 
+{
+  int i, _i;
+  for (i = 0; i < GEMV_BLK_N; i ++) {
+    _i = bi + i;
+    X_buf[i] = (_i<N) ? X[_i*ldx] : 0.0;
+  }
 }
 
 // normal
@@ -44,34 +79,27 @@ void gemv_sds_kernel(int T, int M, int N, float ALPHA,
     float BETA, 
     float *Y, int ldy) 
 {
-  int i, j, _x;
-  int x_buf_size;
-  float y;
-  
-  for (i = 0; i < M; i ++) {
-    y = Y[i*ldy] * BETA;
-
-    for (j = 0; j < N; j += GEMV_BLK_N) {
-      x_buf_size = (j+GEMV_BLK_N<N) ? GEMV_BLK_N : (N-j); 
-      if (!T) {
-        memcpy(A_buf, &A[j], sizeof(float)*x_buf_size);
-      } else {
-        for (_x = 0; _x < x_buf_size; _x ++)
-          A_buf[_x*GEMV_BLK_N] = A[j*lda+(i+_x)];
-      }
-      if (ldx == 1) {
-        memcpy(x_buf, &X[j], sizeof(float)*x_buf_size);
-      } else {
-        for (_x = 0; _x < GEMV_BLK_N && j+_x < N; _x ++)
-          x_buf[_x] = X[(_x+j)*ldx];
-      }
-      if (x_buf_size < GEMV_BLK_N)
-        for (_x = x_buf_size; _x < GEMV_BLK_N; _x ++) 
-          x_buf[_x] = A_buf[_x] = 0.0;
-      
-      y = gemv_accel_call(A_buf, x_buf, y, ALPHA, BETA);
+  /* inner-block indices */
+  int i, _i;
+  /* block indices */
+  int bi, bj;
+  for (bi = 0; bi < M; bi += GEMV_BLK_M) {
+    // initialize Y vector
+    for (i = 0; i < GEMV_BLK_M; i ++)
+      Y_buf[i] = (i+bi < M) ? (BETA * Y[(i+bi)*ldy]) : 0.0;
+    // call GEMV
+    for (bj = 0; bj < N; bj += GEMV_BLK_N) {
+      copy_to_A_buf(T, A, bi, bj, M, N, lda);
+      copy_to_X_buf(X, bj, N, ldx);
+      // core
+      gemv_accel_call(A_buf,X_buf,Y_buf,R_buf,ALPHA,BETA);
+      memcpy(Y_buf, R_buf, sizeof(float)*GEMV_BLK_M);
     }
-
-    Y[i*ldy] = y;
+    // copy back to Y
+    for (i = 0; i < GEMV_BLK_M; i ++) {
+      _i = i + bi;
+      if (_i < M)
+        Y[_i*ldy] = Y_buf[i];
+    }
   }
 }

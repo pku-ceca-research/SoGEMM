@@ -6,9 +6,15 @@
 #elif GEMM_SCALE == 1
   #define DIM 16
 #elif GEMM_SCALE == 2
-  #define DIM 8
+  #define DIM 24
 #elif GEMM_SCALE == 3
   #define DIM 48
+#elif GEMM_SCALE == 4
+  #define DIM 56
+#elif GEMM_SCALE == 5
+  #define DIM 128
+#elif GEMM_SCALE == 6
+  #define DIM 176
 #endif
 #define BLK_M DIM
 #define BLK_N BLK_M

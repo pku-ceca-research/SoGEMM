@@ -1,0 +1,48 @@
+# Platform configuration
+# Decide on which platform this configuration will be built
+# Whether to build on SDS platforms
+# SDS := 0
+
+# If $(SDS) has been set 1, then PLATFORM will be automatically set to 'zed'
+# Please do not use 'cpu' when $(SDS) equals 1
+# PLATFORM := cpu
+
+# Whether to build functions on hardware logics
+# HW := 0
+
+# Whether to add DEBUG prompts
+# DEBUG := 0
+
+# Whether to build application for profiling
+# PROF := 0
+
+# GEMM configurations
+# Use new GEMM_HLS version of GEMM core
+# GEMM_HLS := 1
+
+# Decide GEMM block size by GEMM_SCALE
+# SCALE 0:  32 X  32 (normal)
+# SCALE 1:  16 X  16 (small)
+# SCALE 2:  24 X  24 (mid)
+# SCALE 3:  48 X  48 (large)
+# SCALE 4:  56 X  56 (super)
+# SCALE 5: 128 X 128 (zc706)
+# SCALE 6: 176 X 176 (super-zc706)
+#
+# GEMM_SCALE := 0
+
+# Decide whether to put ALPHA coefficience in HW logics
+# GEMM_WITH_ALPHA := 1
+# Desice whether to use DSP adders, which will reduce many hardware resources
+# GEMM_NO_ADD_DSP := 1
+# Decide where to put gemm_accel on: SW or HW
+# GEMM_FULL_MODE := 0
+# Decide resource partition
+# GEMM_RESOURCE_PARTITION := 1
+
+# GEMV configuration
+# Whether to use GEMV
+# WITH_GEMV := 0
+# GEMM block size configuration
+# GEMV_BLK_N := 64
+# GEMV_BLK_M := 64

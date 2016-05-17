@@ -10,6 +10,7 @@
 #include "gemv_sds.hh"
 
 int main(int argc, char *argv[]) {
+  srand(time(NULL));
   int c;
   int M = 32, N = 32, T = 0;
   int iteration = 1;
@@ -36,8 +37,8 @@ int main(int argc, char *argv[]) {
   for (i = 0; i < N; i++) X[i] = (float)rand()/RAND_MAX;
   for (i = 0; i < M; i++) Y[i] = Y_golden[i] = (float)rand()/RAND_MAX;
 
-  float ALPHA = (float)rand()/RAND_MAX;
-  float BETA = (float)rand()/RAND_MAX;
+  float ALPHA = 0.01 * (float)rand()/RAND_MAX;
+  float BETA  = 0.01 * (float)rand()/RAND_MAX;
   int lda = (T) ? M : N;
 
   printf("ALPHA: %12.6lf\n", ALPHA);
@@ -54,9 +55,7 @@ int main(int argc, char *argv[]) {
     gemv_sds(T, M, N, ALPHA, (const float*)A, lda, (const float*)X, 1, BETA, Y, 1);
   end = clock();
   double total_time = (double)(end-start)/CLOCKS_PER_SEC/iteration;
-  printf("Finished GEMV SDS test: %lf s\n", total_time);
-  // printf("compute: %lf s\n", compute_time);
-  // printf("memory:  %lf s\n", total_time-compute_time);
+  printf("Finished GEMV origin test: %lf s GFLOPS %lf\n", total_time, (M*N*3+M)/total_time*1e-9);
 
   start = clock();
   for (i = 0; i < iteration; i ++) {
@@ -69,7 +68,8 @@ int main(int argc, char *argv[]) {
       }
   }
   end = clock();
-  printf("Finished GEMV golden test: %lf s\n", (double)(end-start)/CLOCKS_PER_SEC/iteration); 
+  total_time = (double)(end-start)/CLOCKS_PER_SEC/iteration;
+  printf("Finished GEMV golden test: %lf s GFLOPS %lf\n", total_time, (M*N*3+M)/total_time*1e-9);
 
   if (iteration == 1)
     for (i = 0; i < M; i ++)

@@ -1,7 +1,8 @@
 #include "gemv_accel.hh"
 #include "gemv_accel_call.hh"
 
-float gemv_accel_call(float *A, float *x, float y, float ALPHA, float BETA)
+void gemv_accel_call(float A[GEMV_BLK_M*GEMV_BLK_N], float X[GEMV_BLK_N],
+    float Y[GEMV_BLK_M], float R[GEMV_BLK_N], float ALPHA, float BETA)
 {
-  return gemv_accel(A,x,y,ALPHA,BETA); 
+  gemv_accel(A,X,Y,R,ALPHA,BETA); 
 }

@@ -87,22 +87,28 @@ void gemm_plain_free_buffers()
   free(R_buf);
 }
 
-inline void copy_blk_to_A_buf(int T, int M, int K, int bi, int bk, float *A, int lda) 
+inline void copy_blk_to_A_buf(int T, int M, int K, int bi, int bk, float *A, int lda, float ALPHA) 
 {
   int i, k, _i, _k;
   if (T) {
     for (i = 0; i < BLK_M && i + bi < M; i ++)
       for (k = 0; k < BLK_K && k + bk < K; k ++) {
         _i = i+bi, _k = k+bk;
-        // A_buf[i*BLK_K+k] = ALPHA * A[_k*lda+_i];
+        #ifdef GEMM_WITH_ALPHA
         A_buf[i*BLK_K+k] = A[_k*lda+_i];
+        #else
+        A_buf[i*BLK_K+k] = ALPHA * A[_k*lda+_i];
+        #endif
       }
   } else {
     for (i = 0; i < BLK_M && i + bi < M; i ++)
       for (k = 0; k < BLK_K && k + bk < K; k ++) {
         _i = i+bi, _k = k+bk;
-        // A_buf[i*BLK_K+k] = ALPHA * A[_i*lda+_k];
+        #ifdef GEMM_WITH_ALPHA
         A_buf[i*BLK_K+k] = A[_i*lda+_k];
+        #else
+        A_buf[i*BLK_K+k] = ALPHA * A[_i*lda+_k];
+        #endif
       }
   }
 }
@@ -150,7 +156,7 @@ void gemm_plain_kernel(int TA, int TB, int M, int N, int K, float ALPHA,
         }
                    
       for (bk = 0; bk < K; bk += BLK_K) { 
-        copy_blk_to_A_buf(TA, M, K, bi, bk, A, lda);
+        copy_blk_to_A_buf(TA, M, K, bi, bk, A, lda, ALPHA);
         copy_blk_to_B_buf(TB, K, N, bj, bk, B, ldb);
         // compute
         gemm_accel(A_buf,B_buf,C_buf,R_buf,ALPHA,BETA);
