@@ -1,6 +1,8 @@
 #ifndef GEMM_ACCEL_H__
 #define GEMM_ACCEL_H__
 
+#include "gemm_consts.h"
+
 #ifdef GEMM_FULL_MODE
   #pragma SDS data access_pattern(A:SEQUENTIAL, B:SEQUENTIAL, C:SEQUENTIAL, R:SEQUENTIAL)
   // #pragma SDS data dim(A[BLK_M][BLK_K], B[BLK_N][BLK_K], C[BLK_M][BLK_N], R[BLK_M][BLK_N])

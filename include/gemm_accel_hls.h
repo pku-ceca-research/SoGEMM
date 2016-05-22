@@ -9,7 +9,7 @@
 #endif
 void gemm_accel_full(
     float A[BLK_M*BLK_K], 
-    float B[BLK_M*BLK_K], 
+    float B[BLK_N*BLK_K], 
     float C[BLK_M*BLK_N], 
     float ALPHA, 
     float R[BLK_M*BLK_N]);

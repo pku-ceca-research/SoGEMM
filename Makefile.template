@@ -97,6 +97,14 @@ GEMM_RESOURCE_PARTITION ?= 0
 ifeq ($(GEMM_RESOURCE_PARTITION), 1)
 CFLAGS += -DGEMM_RESOURCE_PARTITION
 endif
+GEMM_HALF_FLOAT ?= 0
+ifeq ($(GEMM_HALF_FLOAT), 1)
+CFLAGS += -DGEMM_HALF_FLOAT
+endif
+GEMM_RESOURCE_CONSTRAINT ?= 0
+ifeq ($(GEMM_RESOURCE_CONSTRAINT), 1)
+CFLAGS += -DGEMM_RESOURCE_CONSTRAINT
+endif
 
 TEST_GEMM_SDS=test_gemm_sds
 TEST_GEMM_TRANS=test_gemm_trans
@@ -146,12 +154,12 @@ endif
 ifeq ($(GEMM_FULL_MODE), 1)
 CFLAGS+=-DGEMM_FULL_MODE
 SDSFLAGS+= -sds-hw gemm_accel gemm/gemm_accel.c\
-					 -files $(GEMM_SRCDIR)gemm_block_unit.c,$(GEMM_SRCDIR)gemm_accel_hls.c\
+					 -files $(GEMM_SRCDIR)gemm_block_unit.c,$(GEMM_SRCDIR)gemm_accel_hls.cc\
 					 -clkid $(GEMM_CLOCK_ID) -sds-end
 else
 	ifeq ($(GEMM_HLS), 1)
 		SDSFLAGS+=\
-			-sds-hw gemm_accel_full $(GEMM_SRCDIR)gemm_accel_hls.c -clkid $(GEMM_CLOCK_ID) -sds-end
+			-sds-hw gemm_accel_full $(GEMM_SRCDIR)gemm_accel_hls.cc -clkid $(GEMM_CLOCK_ID) -sds-end
 	else
 		SDSFLAGS+=\
 			-sds-hw gemm_block_units_mmult $(GEMM_SRCDIR)gemm_block_unit.c -clkid $(GEMM_CLOCK_ID) -sds-end\
@@ -194,6 +202,10 @@ $(LIBDIR)$(LIBACCEL): $(GEMM_OBJS) $(GEMV_OBJS)
 	@ $(RELEASE_CXX) $(CFLAGS) $^ -shared -o $@
 
 $(GEMM_OBJDIR)%.o: $(GEMM_SRCDIR)%.c $(DEPS)
+	@ echo "CXX -o $@"
+	@ $(CXX) $(CFLAGS) -c $< -o $@
+
+$(GEMM_OBJDIR)%.o: $(GEMM_SRCDIR)%.cc $(DEPS)
 	@ echo "CXX -o $@"
 	@ $(CXX) $(CFLAGS) -c $< -o $@
 

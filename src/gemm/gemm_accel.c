@@ -9,11 +9,16 @@ void gemm_accel(
     float B[BLK_K*BLK_N], 
     float C[BLK_M*BLK_N], 
     float R[BLK_M*BLK_N],
-    float ALPHA, float BETA)
+    float ALPHA, 
+    float BETA)
 {
+#ifdef GEMM_HLS
+  gemm_accel_full(A,B,C,ALPHA,R);
+#else
+  
 #ifdef GEMM_FULL_MODE
-float T[BLK_M*BLK_N];
-#pragma HLS dataflow
+  float T[BLK_M*BLK_N];
+  #pragma HLS dataflow
 #else
   #ifdef SDS
   #include "sds_lib.h"
@@ -21,16 +26,13 @@ float T[BLK_M*BLK_N];
   #define free(x) (sds_free((x)))
   #endif
   float *T = (float*) malloc(sizeof(float)*BLK_SIZE_MN);
-#endif
+#endif /* GEMM_FULL_MODE */
 
-#ifdef GEMM_HLS
-  gemm_accel_full(A,B,C,ALPHA,R);
-#else
   gemm_block_units_mmult(A, B, ALPHA, T);
   gemm_block_units_mplus(T, C, R);
-#endif
-
 #ifndef GEMM_FULL_MODE
   free(T);
-#endif
+#endif /* GEMM_FULL_MODE */
+
+#endif /* GEMM_HLS */
 }

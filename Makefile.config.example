@@ -39,6 +39,10 @@
 # GEMM_FULL_MODE := 0
 # Decide resource partition
 # GEMM_RESOURCE_PARTITION := 1
+# Decide floating point data type
+# GEMM_HALF_FLOAT := 0
+# Decide resource constraint
+# GEMM_RESOURCE_CONSTRAINT := 0
 
 # GEMV configuration
 # Whether to use GEMV
