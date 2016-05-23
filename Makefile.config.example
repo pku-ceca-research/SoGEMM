@@ -43,6 +43,8 @@
 # GEMM_HALF_FLOAT := 0
 # Decide resource constraint
 # GEMM_RESOURCE_CONSTRAINT := 0
+# Decide BRAM copy method
+# GEMM_COPY_METHOD := 0
 
 # GEMV configuration
 # Whether to use GEMV

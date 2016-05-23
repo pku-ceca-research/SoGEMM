@@ -9,7 +9,7 @@
   #define GEMM_IRREGULAR
   #define GEMM_RESOURCE_PARTITION
   #if GEMM_SCALE == 7
-    #define DIM 64
+    #define DIM 68
     #define VEC 56
   #else
     #error "GEMM_SCALE doesn't exist."
