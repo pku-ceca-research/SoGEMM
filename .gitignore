@@ -1,6 +1,5 @@
 *.swp
 *.tar.gz
-
 # Objects
 obj/
 bin/
@@ -17,3 +16,5 @@ _sds/
 *.out
 *.elf
 *.bit
+
+!build.tar.gz
